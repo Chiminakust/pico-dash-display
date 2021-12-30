@@ -324,15 +324,20 @@ class Commands():
             [],
             __mode9__,
         ]
+        print('init')
 
         # allow commands to be accessed by name
         for m in self.modes:
             for c in m:
+                print('init1', c, m)
                 if c is not None:
                     self.__dict__[c.name] = c
 
+        print('init')
         for c in __misc__:
+            print('init2')
             self.__dict__[c.name] = c
+        print('init done')
 
     def __getitem__(self, key):
         """

@@ -5,6 +5,13 @@ from gauge import Gauge
 from obd.obd import OBD
 
 
+def query(obd, key):
+    return obd.query(commands[key]).value
+
+def get_speed(obd):
+    return query(obd, 'SPEED')
+
+
 led = Pin(25, Pin.OUT)
 led.value(0)
 

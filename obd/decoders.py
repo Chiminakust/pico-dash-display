@@ -31,15 +31,10 @@
 ########################################################################
 
 import math
-import functools
 from .utils import *
-from .codes import *
 from .OBDResponse import Status, StatusTest, Monitor, MonitorTest
-from .UnitsAndScaling import Unit, UAS_IDS
+# from .UnitsAndScaling import Unit, UAS_IDS
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 '''
 All decoders take the form:
@@ -81,7 +76,8 @@ Unit/Scaling in that table, simply to avoid redundant code.
 
 def uas(id_):
     """ get the corresponding decoder for this UAS ID """
-    return functools.partial(decode_uas, id_=id_)
+#     return partial(decode_uas, id_=id_)
+    return lambda messages: decode_uas(messages, id_=id_)
 
 
 def decode_uas(messages, id_):
@@ -267,7 +263,7 @@ def elm_voltage(messages):
     try:
         return float(v) * Unit.volt
     except ValueError:
-        logger.warning("Failed to parse ELM voltage")
+        print("Failed to parse ELM voltage")
         return None
 
 
@@ -329,17 +325,17 @@ def fuel_status(messages):
         if 7 - bits[0:8].index(True) < len(FUEL_STATUS):
             status_1 = FUEL_STATUS[7 - bits[0:8].index(True)]
         else:
-            logger.debug("Invalid response for fuel status (high bits set)")
+            print("Invalid response for fuel status (high bits set)")
     else:
-        logger.debug("Invalid response for fuel status (multiple/no bits set)")
+        print("Invalid response for fuel status (multiple/no bits set)")
 
     if bits[8:16].count(True) == 1:
         if 7 - bits[8:16].index(True) < len(FUEL_STATUS):
             status_2 = FUEL_STATUS[7 - bits[8:16].index(True)]
         else:
-            logger.debug("Invalid response for fuel status (high bits set)")
+            print("Invalid response for fuel status (high bits set)")
     else:
-        logger.debug("Invalid response for fuel status (multiple/no bits set)")
+        print("Invalid response for fuel status (multiple/no bits set)")
 
     if not status_1 and not status_2:
         return None
@@ -355,7 +351,7 @@ def air_status(messages):
     if bits.num_set() == 1:
         status = AIR_STATUS[7 - bits[0:8].index(True)]
     else:
-        logger.debug("Invalid response for fuel status (multiple/no bits set)")
+        print("Invalid response for fuel status (multiple/no bits set)")
 
     return status
 
@@ -369,7 +365,7 @@ def obd_compliance(messages):
     if i < len(OBD_COMPLIANCE):
         v = OBD_COMPLIANCE[i]
     else:
-        logger.debug("Invalid response for OBD compliance (no table entry)")
+        print("Invalid response for OBD compliance (no table entry)")
 
     return v
 
@@ -383,7 +379,7 @@ def fuel_type(messages):
     if i < len(FUEL_TYPES):
         v = FUEL_TYPES[i]
     else:
-        logger.debug("Invalid response for fuel type (no table entry)")
+        print("Invalid response for fuel type (no table entry)")
 
     return v
 
@@ -445,7 +441,7 @@ def parse_monitor_test(d, mon):
         test.name = TEST_IDS[tid][0]  # lookup the name from the table
         test.desc = TEST_IDS[tid][1]  # lookup the description from the table
     else:
-        logger.debug("Encountered unknown Test ID")
+        print("Encountered unknown Test ID")
         test.name = "Unknown"
         test.desc = "Unknown"
 
@@ -453,7 +449,7 @@ def parse_monitor_test(d, mon):
 
     # if we can't decode the value, abort
     if uas is None:
-        logger.debug("Encountered unknown Units and Scaling ID")
+        print("Encountered unknown Units and Scaling ID")
         return None
 
     # load the test results
@@ -477,7 +473,7 @@ def monitor(messages):
     extra_bytes = len(d) % 9
 
     if extra_bytes != 0:
-        logger.debug("Encountered monitor message with non-multiple of 9 bytes. Truncating...")
+        print("Encountered monitor message with non-multiple of 9 bytes. Truncating...")
         d = d[:len(d) - extra_bytes]
 
     # look at data in blocks of 9 bytes (one test result)
@@ -492,14 +488,15 @@ def monitor(messages):
 
 def encoded_string(length):
     """ Extract an encoded string from multi-part messages """
-    return functools.partial(decode_encoded_string, length=length)
+#     return partial(decode_encoded_string, length=length)
+    return lambda messages: decode_encoded_string(messages, length=length)
 
 
 def decode_encoded_string(messages, length):
     d = messages[0].data[2:]
 
     if len(d) < length:
-        logger.debug("Invalid string {}. Discarding...", d)
+        print("Invalid string {}. Discarding...", d)
         return None
 
     # Encoded strings come in bundles of messages with leading null values to
