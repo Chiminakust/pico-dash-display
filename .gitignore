@@ -1,0 +1,30 @@
+# kernel extensions
+*.ko
+*.o
+*.mod
+*.mod.c
+*.mod.o
+.*.o.cmd
+.*.ko.cmd
+.*.mod.cmd
+.*.mod.o.cmd
+
+.Module.symvers.cmd
+.modules.order.cmd
+Module.symvers
+modules.order
+
+# emacs autosave files
+*\~
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+
+# ignore localconf, it should be copied from localconf.mk.def and modified
+localconf.mk

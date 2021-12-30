@@ -2,7 +2,7 @@ from machine import Pin, I2C, UART
 from time import sleep
 
 from gauge import Gauge
-from elm327 import ELM327
+from obd.obd import OBD
 
 
 led = Pin(25, Pin.OUT)
@@ -15,8 +15,8 @@ i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=100_000)
 ser = UART(0, baudrate=57600, tx=Pin(12), rx=Pin(13))
 
 # init ELM327 (OBD reader)
-elm = ELM327(ser)
-print(elm.get_vin())
+obd = OBD(ser)
+print(get_vin(obd))
 
 # init 1st gauge
 gauge = Gauge(i2c, 0x20, 113)
@@ -33,7 +33,7 @@ while True:
     led.toggle()
 
     # set 1st gauge to speed
-    print('speed: ', elm.get_speed())
+    print('speed: ', get_speed(obd))
     gauge.set(i)
 
 
