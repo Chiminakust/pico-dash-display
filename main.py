@@ -19,7 +19,7 @@ led.value(0)
 i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=100_000)
 
 # init UART
-ser = UART(0, baudrate=57600, tx=Pin(12), rx=Pin(13))
+ser = UART(0, baudrate=38400, tx=Pin(12), rx=Pin(13))
 
 # init ELM327 (OBD reader)
 obd = OBD(ser)
