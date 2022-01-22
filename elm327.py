@@ -12,6 +12,9 @@ TODO: AT MA command to put in monitor all mode, any char sent after will stop th
 """
 
 
+from time import sleep
+
+
 # utils functions
 def bytes_to_int(bs):
     """ converts a big-endian byte array into a single integer """
@@ -73,7 +76,7 @@ class ELM327:
             ('09', '02'): None, # VIN
         }
 
-    def led_test(self):
+    def reset(self):
         """Simple test to make the LEDs on the ELM327 flash in sequence."""
 
         return self.AT('Z')
@@ -90,33 +93,27 @@ class ELM327:
         return self.AT(f'SP {protocol}')
 
     def get_engine_coolant_temperature(self):
-        ret = obd_get_current_data('05')
-        # TODO: temperature is 3rd byte as decimal - 40 in Celsius
-        return ret
+        ret = self.obd_get_current_data('05')
+        return decode_temperature(ret[0])
 
     def get_intake_manifold_pressure(self):
-        ret = obd_get_current_data('0B')
-        # TODO decode
-        print('intake manifold pressure = ', decode_pressure(ret), 'kPa')
-        return ret
+        ret = self.obd_get_current_data('0B')
+        return decode_pressure(ret[0])
 
     def get_engine_rpm(self):
-        ret = obd_get_current_data('0C')
-        # TODO: rpm is the last 2 bytes / 4
-        return ret
+        ret = self.obd_get_current_data('0C')
+        return decode_rpm(ret[0])
 
     def get_speed(self):
-        ret = obd_get_current_data('0D')
-        # TODO: parse speed
-        return ret
+        ret = self.obd_get_current_data('0D')
+        return decode_speed(ret[0])
 
     def get_engine_oil_temperature(self):
-        ret = obd_get_current_data('5C')
-        # TODO: parse oil temp
-        return ret
+        ret = self.obd_get_current_data('5C')
+        return decode_temperature(ret[0])
 
     def get_vin(self):
-        ret = obd_get_vehicle_information('02')
+        ret = self.obd_get_vehicle_information('02')
         # TODO: parse return
         return ret
 
@@ -125,33 +122,52 @@ class ELM327:
 
     def OBD(self, mode, pid):
         OBD_MODES = [
-            0x01, # show current data
-            0x02, # show freeze frame data
-            0x03, # show diagnostics trouble codes
-            0x04, # clear trouble codes and stored values
-            0x05, # test results, oxygen sensors
-            0x06, # test results, non-continuously monitored
-            0x07, # show 'pending' trouble codes
-            0x08, # special control mode
-            0x09, # request vehicle information
-            0x0A  # request permanent trouble codes
+            '01', # show current data
+            '02', # show freeze frame data
+            '03', # show diagnostics trouble codes
+            '04', # clear trouble codes and stored values
+            '05', # test results, oxygen sensors
+            '06', # test results, non-continuously monitored
+            '07', # show 'pending' trouble codes
+            '08', # special control mode
+            '09', # request vehicle information
+            '0A'  # request permanent trouble codes
         ]
         assert mode in OBD_MODES, f'invalid mode: {mode}'
 
         # check how many lines to expect for the response
         # (will be None if first time using the command)
-        lines = self.num_lines[(mode, pid)]
+        N = self.num_lines[(mode, pid)]
 
         # first byte is mode
         # 2nd and 3rd bytes are parameter identification (PID)
         cmd = f'{mode} {pid}'
-        if lines:
-            cmd += f' {lines}'
+        if N:
+            cmd += f' {N}'
 
         ret = self.query(cmd)
 
-        # TODO: update lines
-        # self.num_lines[(mode, pid)] = lines
+        lines = ret.split('\r')
+
+        # remove echo (first line is always command sent)
+        lines = lines[1:]
+
+        # retrieve only important data, last 2 lines are empty and the prompt
+        lines = lines[:-2]
+
+        # update number of lines this command returns
+        self.num_lines[(mode, pid)] = len(lines)
+
+        # return a list of bytes for each line
+        ret = []
+        for line in lines:
+            l = []
+            # remove whitespace
+            line = line.replace('\r', '').replace('>', '').replace(' ', '')
+            for i in range(0, len(line), 2):
+                l += [int(line[i:i + 2], 16)]
+
+            ret += [bytes(l)]
 
         return ret
 
@@ -161,13 +177,23 @@ class ELM327:
     def obd_get_vehicle_information(self, pid):
         return self.OBD('09', pid)
 
-    def query(self, cmd):
+    def query(self, cmd, EOM='\r\r>'):
         self.send(cmd)
-        # TODO: read, parse and return response
-        return 0
+        return self.read_until(EOM)
 
     def send(self, cmd):
         self.write(cmd + '\r')
 
     def write(self, cmd):
-        self.uart.write(cmd.encode()))
+        self.uart.write(cmd.encode())
+
+    def read_until(self, EOM):
+        ret = ''
+        n = len(EOM)
+
+        while ret[-n:] != EOM:
+            while self.uart.any() == 0:
+                sleep(0.01)
+            ret += self.uart.read().decode()
+
+        return ret

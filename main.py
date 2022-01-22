@@ -2,14 +2,7 @@ from machine import Pin, I2C, UART
 from time import sleep
 
 from gauge import Gauge
-from obd.obd import OBD
-
-
-def query(obd, key):
-    return obd.query(commands[key]).value
-
-def get_speed(obd):
-    return query(obd, 'SPEED')
+from elm327 import ELM327
 
 
 led = Pin(25, Pin.OUT)
@@ -22,15 +15,17 @@ i2c = I2C(0, scl=Pin(1), sda=Pin(0), freq=100_000)
 ser = UART(0, baudrate=38400, tx=Pin(12), rx=Pin(13))
 
 # init ELM327 (OBD reader)
-obd = OBD(ser)
-print(get_vin(obd))
+elm = ELM327(ser)
+print('reset')
+elm.reset()
+# print('VIN:\n', elm.get_vin())
 
 # init 1st gauge
 gauge = Gauge(i2c, 0x20, 113)
 rmin = 0
-rmax = 999
-gauge.set_ranges([rmin, rmax], [50, 100, 150, 200, 350, 550, 650, 900])
-i = rmin
+rmax = 4500
+gauge.set_ranges([rmin, rmax])
+speed = 0
 
 while True:
     # delay
@@ -40,10 +35,15 @@ while True:
     led.toggle()
 
     # set 1st gauge to speed
-    print('speed: ', get_speed(obd))
-    gauge.set(i)
+    print('engine coolant temperature:', elm.get_engine_coolant_temperature(), '°C')
+    print('intake manifold pressure:', elm.get_intake_manifold_pressure(), 'kPa')
 
+    rpm = elm.get_engine_rpm()
+    print('engine rpm:', rpm, 'rpm')
 
-    i += 10
-    if i > rmax:
-        i = rmin
+    speed = elm.get_speed()
+    print('speed:', speed, 'km/h')
+
+#     print('oil temperature:', elm.get_engine_oil_temperature(), '°C')
+    print('\n')
+    gauge.set(int(rpm))
