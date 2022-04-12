@@ -161,13 +161,20 @@ class ELM327:
         # return a list of bytes for each line
         ret = []
         for line in lines:
-            l = []
-            # remove whitespace
-            line = line.replace('\r', '').replace('>', '').replace(' ', '')
-            for i in range(0, len(line), 2):
-                l += [int(line[i:i + 2], 16)]
+            try:
+                l = []
+                # remove whitespace
+                line = line.replace('\r', '').replace('>', '').replace(' ', '')
+                # test if UNABLETOCONNECT
+                if line == 'UNABLETOCONNECT':
+                    raise Exception('Car not connected')
+                # read ever set of 2 ascii chars as an 8-bit hex number
+                for i in range(0, len(line), 2):
+                    l += [int(line[i:i + 2], 16)]
 
-            ret += [bytes(l)]
+                ret += [bytes(l)]
+            except ValueError:
+                print("Could not convert line:", line)
 
         return ret
 
