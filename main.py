@@ -32,16 +32,17 @@ i = 0
 
 led_driver = PCA9634(i2c, 0x10)
 states = [0] * 8
+print('init done')
 
 while True:
     # delay
-    sleep(0.51)
+    sleep(0.50)
 
     # toggle led for good measure (crash indicator)
     led.toggle()
 
     states = [1] * i + [0] * (8-i)
-    led_driver.set_leds_states(states)
+    #led_driver.set_leds_states(states)
 
     i += 1
     if i >= 9:
