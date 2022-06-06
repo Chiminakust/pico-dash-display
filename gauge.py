@@ -1,14 +1,13 @@
-from mcp23008 import MCP23008
+from pca9634 import PCA9634
 from s7s import S7S
 
 
 class Gauge:
-    def __init__(self, i2c, mcp_addr, s7s_addr):
+    def __init__(self, i2c, pca_addr, s7s_addr):
         self.i2c = i2c
 
-        # init mcp23008
-        self.mcp = MCP23008(self.i2c, mcp_addr)
-        self.mcp.set_dir(0x00)
+        # init pca9634
+        self.pca = PCA9634(self.i2c, pca_addr)
 
         # init S7S
         self.s7s = S7S(self.i2c, s7s_addr)
@@ -32,17 +31,18 @@ class Gauge:
             self.led_ranges = led_ranges
         else:
             self.even_led_ranges()
+        print("led ranges are:", self.led_ranges)
 
     def even_led_ranges(self):
             self.led_ranges = list(range(self.min, self.max, int((self.max - self.min) / 9)))[1:]
 
     def set(self, value):
         # set which LEDs to turn on
-        mcp_val = 0x00
+        pca_states = [0] * 8
         for i, x in enumerate(self.led_ranges):
             if value >= x:
-                mcp_val |= 1 << i
-        self.mcp.set_output(mcp_val)
+                pca_states[i] = 1
+        self.pca.set_leds_states(pca_states)
 
         # set which value to display on the 7 segment
         self.s7s.write_int(value)
