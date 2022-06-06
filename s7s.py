@@ -65,7 +65,7 @@ class S7S:
         try:
             return self.i2c.writeto(self.address, buf)
         except OSError:
-            return
+            print('could not write i2c')
 
     def i2c_write_buf(self, reg, buf):
         return self.i2c.writeto_mem(self.address, reg, buf)
