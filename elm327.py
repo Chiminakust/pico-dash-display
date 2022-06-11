@@ -201,6 +201,10 @@ class ELM327:
         while ret[-n:] != EOM:
             while self.uart.any() == 0:
                 sleep(0.01)
-            ret += self.uart.read().decode()
+            d = self.uart.read()
+            try:
+                ret += d.decode()
+            except UnicodeError:
+                print("uart decode error")
 
         return ret

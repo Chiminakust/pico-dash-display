@@ -21,9 +21,18 @@ class S7S:
 
     def clear(self):
         self.i2c_write_reg(S7S.CLEAR_DISPLAY)
+        
+    def change_address(self, new_address):
+        assert 0x01 <= new_address <= 0x7e, "new address must be in valid range"
+        
+        self.i2c_write_reg(S7S.I2C_ADDRESS_CONFIG, new_address)
 
     def write_int(self, x: int):
-        num = [int(y) for y in str(x)[:4]]
+        try:
+            num = [int(y) for y in str(x)[:4]]
+        except ValueError:
+            print('could not convert', x)
+            return
         if len(num) < self.num_len:
             self.clear()
         self.num_len = len(num)
@@ -57,7 +66,10 @@ class S7S:
             buf = bytes([reg, data])
         else:
             buf = bytes([reg])
-        return self.i2c.writeto(self.address, buf)
+        try:
+            return self.i2c.writeto(self.address, buf)
+        except OSError:
+            print('could not write i2c')
 
     def i2c_write_buf(self, reg, buf):
         return self.i2c.writeto_mem(self.address, reg, buf)
